@@ -1,0 +1,11 @@
+{
+  "name": "webview2-async-host-object",
+  "version": "1.0.0",
+  "scripts": {
+    "serve": "parcel serve ./html/index.html",
+    "build": "parcel build ./html/index.html"
+  },
+  "devDependencies": {
+    "parcel": "^2.7.0"
+  }
+}
