@@ -1,14 +1,24 @@
 export class ProxyWrapper {
-    private workItemIdToResolve: { [workItemId: string]: (str: string) => void } = {};
+    private workItemIdToHandlers: { [workItemId: string]: { resolve: (str: string) => void, reject: (errorCodeString: string) => void } } = {};
 
     constructor() {
         chrome.webview.addEventListener("message", str => {
             // Check for magic number
             if (str.charCodeAt(0) === 1337) {
                 const workItemId = str.slice(1, 9);
-                const handler = this.workItemIdToResolve[workItemId];
-                if (handler !== undefined) {
-                    handler(str.slice(9));
+                const handlers = this.workItemIdToHandlers[workItemId];
+                if (handlers !== undefined) {
+                    switch (str.slice(9, 10)) {
+                        case ":":
+                            // Success
+                            handlers.resolve(str.slice(10));
+                            break;
+
+                        case "!":
+                            // Error
+                            handlers.reject(str.slice(10, 18));
+                            break;
+                    }
                 }
             }
         });
@@ -20,8 +30,14 @@ export class ProxyWrapper {
                 .then(hostObject => {
                     hostObject[functionName](...args)
                         .then((workItemId: string) => {
-                            this.workItemIdToResolve[workItemId] = (jsonString: string) => {
-                                resolve(JSON.parse(jsonString) as TResult);
+                            this.workItemIdToHandlers[workItemId] = {
+                                resolve: (jsonString: string) => {
+                                    resolve(JSON.parse(jsonString) as TResult);
+                                },
+
+                                reject: (errorCodeString: string) => {
+                                    reject(new Error(`Error from work item: ${errorCodeString}`));
+                                }
                             };
                         })
                         .catch(reject);
